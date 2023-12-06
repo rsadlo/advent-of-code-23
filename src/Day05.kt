@@ -1,4 +1,11 @@
-import kotlin.math.min
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import java.util.concurrent.Executors
+import kotlin.system.measureNanoTime
+import kotlin.system.measureTimeMillis
 
 fun main() {
     fun part1(input: List<String>): Int {
@@ -38,37 +45,39 @@ fun main() {
         ).map { input.findMap(it) }
 
 
-        var final = Long.MAX_VALUE
-
-        seeds.forEach {
-            //Moved from map operations to for each loop, since the other produced memory issues
-            //It would probably work with sequence and stateless operations only: TODO: Rewrite with sequence and
-            // without min()
-            for (i in it) {
-                val result = lambdas.fold(i) { acc, l -> l.invoke(acc) }
-                final = min(final, result)
-            }
+        val result = runBlocking {
+            withContext(Executors.newFixedThreadPool(64).asCoroutineDispatcher()) {
+                seeds.flatMap { seeds ->
+                    seeds.asSequence().chunked(100000).map { seed ->
+                            async {
+                                seed.map { lambdas.fold(it) { acc, l -> l.invoke(acc) } }.min()
+                            }
+                        }
+                }
+            }.awaitAll().min()
         }
-        return final.toInt()
+        return result.toInt()
     }
 
-    // test if implementation meets criteria from the description, like:
+// test if implementation meets criteria from the description, like:
     val testInput = readInput("Day05_test")
     check(part2(testInput) == 46)
 
     val input = readInput("Day05")
-    part1(input).println()
-    part2(input).println()
+
+    measureNanoTime { part1(input).println() }.let { println("Took $it ns") }
+    println("---")
+    measureTimeMillis { part2(input).println() }.let { println("Took $it ms") }
 }
 
 
-fun List<String>.seeds() = this[0].split(": ")[1].split(" ").map { it.toLong() }
+fun List<String>.seeds() = this[0].removePrefix("seeds: ").split(" ").map { it.toLong() }
 
 
 fun List<String>.seedRanges(): List<LongRange> {
-    val seedValues = this[0].split(": ")[1].split(" ")
+    val seedValues = this[0].removePrefix("seeds: ").split(" ")
     return seedValues.windowed(2, 2).map {
-        LongRange(it[0].toLong(), it[0].toLong() + it[1].toLong() - 1)
+        it[0].toLong()..<it[0].toLong() + it[1].toLong()
     }
 }
 
@@ -83,13 +92,10 @@ fun List<String>.findMap(name: String): (Long) -> Long {
         val (outStart, inStart, length) = it.split(" ").map { it.toLong() }
         Pair(LongRange(inStart, inStart + length - 1), LongRange(outStart, outStart + length - 1))
     }
+
+    val map = ranges.associate { range -> Pair(range.first, (range.second.first - range.first.first)) }
+
     return { i: Long ->
-        val range = ranges.firstOrNull { it.first.contains(i) }
-        if (range == null) {
-            i
-        } else {
-            val rangeOffset = i - range.first.first
-            range.second.first + rangeOffset
-        }
+        map.entries.firstOrNull { it.key.contains(i) }?.let { i + it.value } ?: i
     }
 }
