@@ -1,4 +1,5 @@
 import kotlin.math.abs
+import kotlin.system.measureTimeMillis
 
 fun main() {
     fun part1(input: List<String>): Long {
@@ -6,12 +7,12 @@ fun main() {
         val distances = input[1].split("\\s+".toRegex()).drop(1).map { it.toLong() }
 
         val result = times.zip(distances).map { (time, distance) ->
-            val fromLower = (0 until time).asSequence().associateWith { holdTime ->
-                (time - holdTime) * holdTime
-            }.entries.takeWhile { it.value <= distance }.last().key + 1
-            val fromUpper = (time downTo 0).asSequence().associateWith { holdTime ->
-                (time - holdTime) * holdTime
-            }.entries.takeWhile { it.value <= distance }.last().key - 1
+            val fromLower = (0 until time).asSequence().map { holdTime ->
+                Pair(holdTime, (time - holdTime) * holdTime)
+            }.takeWhile { it.second <= distance }.last().first + 1
+            val fromUpper = (time downTo 0).asSequence().map { holdTime ->
+                Pair(holdTime, (time - holdTime) * holdTime)
+            }.takeWhile { it.second <= distance }.last().first - 1
             abs(fromLower - fromUpper) + 1L
         }
         return result.fold(1L) { acc, l -> acc * l }
@@ -29,5 +30,7 @@ fun main() {
 
     val input = readInput("Day06")
     part1(input).println()
-    part2(input).println()
+
+    println("took ${measureTimeMillis { part2(input).println() }} ms")
+
 }

@@ -46,7 +46,7 @@ fun main() {
 
 
         val result = runBlocking {
-            withContext(Executors.newFixedThreadPool(64).asCoroutineDispatcher()) {
+            withContext(Executors.newFixedThreadPool(11).asCoroutineDispatcher()) {
                 seeds.flatMap { seeds ->
                     seeds.asSequence().chunked(100000).map { seed ->
                             async {
