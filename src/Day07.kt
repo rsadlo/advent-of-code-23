@@ -1,3 +1,5 @@
+import kotlin.system.measureTimeMillis
+
 fun main() {
     fun part1(input: List<String>): Long {
         val result = input.map { it.split(" ").let { Pair(it[0], it[1].toInt()) } }.sortedWith(::sort).toList()
@@ -22,7 +24,9 @@ fun main() {
     check(part1(input) == 241344943L)
 
     part1(input).println()
-    part2(input).println()
+    measureTimeMillis {
+        part2(input).println()
+    }.let { println("${it} ms") }
 }
 
 fun sort(pair: Pair<String, Int>?, pair1: Pair<String, Int>?): Int {
@@ -57,20 +61,19 @@ fun sort2(pair: Pair<String, Int>?, pair1: Pair<String, Int>?): Int {
 /**
  * Assign each type of hand to a numeric value
  * 6 -> Five of a kind
- ...
+...
  * 0 -> high card
  */
 fun String.getHandStrength(part2: Boolean = false): Int {
     var occurences = this.groupingBy { it }.eachCount()
     val jOffset = if (part2) occurences.getOrDefault('J', 0) else 0
 
-    if(jOffset == 5) {
+    if (jOffset == 5) {
         return 6
     }
 
-    if (part2) {
-        occurences = occurences.filterKeys { it != 'J' }
-    }
+    if (part2) occurences = occurences.filterKeys { it != 'J' }
+
 
     return when {
         occurences.any { it.value + jOffset == 5 } -> 6
